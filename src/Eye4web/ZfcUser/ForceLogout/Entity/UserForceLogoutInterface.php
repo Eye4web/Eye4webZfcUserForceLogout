@@ -5,6 +5,6 @@ namespace Eye4web\ZfcUser\ForceLogout\Entity;
 
 interface UserForceLogoutInterface
 {
-    function getForceLogout();
-    function setForceLogout($forceLogout);
+    public function getForceLogout();
+    public function setForceLogout($forceLogout);
 }
