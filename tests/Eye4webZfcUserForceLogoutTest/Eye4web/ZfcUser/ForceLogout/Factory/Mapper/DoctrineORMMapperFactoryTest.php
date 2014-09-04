@@ -3,43 +3,34 @@
 namespace Eye4webZfcUserForceLogoutTest\Eye4web\ZfcUser\ForceLogout\Factory\Mapper;
 
 
-use Eye4web\ZfcUser\ForceLogout\Mapper\DoctrineORMMapper;
+use Eye4web\ZfcUser\ForceLogout\Factory\Mapper\DoctrineORMMapperFactory;
 
 class DoctrineORMMapperFactoryTest extends \PHPUnit_Framework_TestCase
 {
-    /** @var DoctrineORMMapper */
-    protected $mapper;
+    protected $factory;
 
-    protected $entityManager;
+    protected $serviceManager;
 
     public function setUp()
     {
-        $this->entityManager = $this->getMockBuilder('Doctrine\ORM\EntityManager')
+        $this->serviceManager = $this->getMock('Zend\ServiceManager\ServiceLocatorInterface');
+
+        $this->factory = new DoctrineORMMapperFactory();
+    }
+
+    public function testCreateService()
+    {
+        $entityManager = $this->getMockBuilder('Doctrine\ORM\EntityManager')
             ->disableOriginalConstructor()
             ->getMock();
 
-        $this->mapper = new DoctrineORMMapper($this->entityManager);
-    }
+        $this->serviceManager->expects($this->once())
+            ->method('get')
+            ->with('Doctrine\ORM\EntityManager')
+            ->will($this->returnValue($entityManager));
 
-    public function testForceLogout()
-    {
-        $forceLogout = true;
-        $user = $this->getMock('Eye4web\ZfcUser\ForceLogout\Entity\UserForceLogoutInterface');
-        $hydrator = $this->getMock('Zend\Stdlib\Hydrator\HydratorInterface');
+        $result = $this->factory->createService($this->serviceManager);
 
-        $user->expects($this->once())
-            ->method('setForceLogout')
-            ->with($forceLogout);
-
-        $this->entityManager->expects($this->once())
-            ->method('persist')
-            ->with($user);
-        $this->entityManager->expects($this->once())
-            ->method('flush');
-
-        $result = $this->mapper->setForceLogout($user, $forceLogout, $hydrator);
-
-        $this->assertInstanceOf('Eye4web\ZfcUser\ForceLogout\Entity\UserForceLogoutInterface', $result);
-        $this->assertSame($user, $result);
+        $this->assertInstanceOf('Eye4web\ZfcUser\ForceLogout\Mapper\DoctrineORMMapper', $result);
     }
 }
