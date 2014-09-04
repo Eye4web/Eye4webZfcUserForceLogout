@@ -1,5 +1,8 @@
 Eye4webZfcUserForceLogout
 =======
+[![Build Status](https://travis-ci.org/Eye4web/Eye4webZfcUserForceLogout.svg?branch=master)](https://travis-ci.org/Eye4web/Eye4webZfcUserForceLogout)
+[![Code Climate](https://codeclimate.com/github/Eye4web/Eye4webZfcUserForceLogout/badges/gpa.svg)](https://codeclimate.com/github/Eye4web/Eye4webZfcUserForceLogout)
+[![Test Coverage](https://codeclimate.com/github/Eye4web/Eye4webZfcUserForceLogout/badges/coverage.svg)](https://codeclimate.com/github/Eye4web/Eye4webZfcUserForceLogout)
 
 Introduction
 ------------
