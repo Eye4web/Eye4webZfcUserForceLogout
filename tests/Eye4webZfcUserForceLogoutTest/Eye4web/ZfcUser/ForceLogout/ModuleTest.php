@@ -2,7 +2,7 @@
 
 namespace Eye4webZfcUserForceLogoutTest\Eye4web\ZfcUser\ForceLogout;
 
-
+use Eye4web\ZfcUser\ForceLogout\Entity\UserForceLogoutInterface;
 use Zend\Mvc\MvcEvent;
 use Eye4web\ZfcUser\ForceLogout\Module;
 
@@ -16,11 +16,13 @@ class ModuleTest extends \PHPUnit_Framework_TestCase
 
     protected $serviceManager;
 
-    protected $applicaiotn;
+    protected $application;
 
     protected $user;
 
     protected $mvcEvent;
+
+    protected $serviceManagerPlugins;
 
     public function setUp()
     {
@@ -29,12 +31,15 @@ class ModuleTest extends \PHPUnit_Framework_TestCase
         $this->authService = $this->getMock('Zend\Authentication\AuthenticationServiceInterface');
 
         $this->serviceManager = $this->getMock('Zend\ServiceManager\ServiceLocatorInterface');
+        $this->serviceManager->expects($this->any())
+            ->method('get')
+            ->will($this->returnCallback(array($this, 'helperMockCallbackServiceManagerGet')));
 
         $this->application = $this->getMockBuilder('Zend\Mvc\Application')
             ->disableOriginalConstructor()
             ->getMock();
 
-        $this->user = $this->getMock('Application\Entity\User');
+        $this->user = $this->getMock('Eye4web\ZfcUser\ForceLogout\Entity\UserForceLogoutInterface');
 
         $this->mvcEvent = $this->getMock('Zend\Mvc\MvcEvent');
 
@@ -63,16 +68,13 @@ class ModuleTest extends \PHPUnit_Framework_TestCase
     /**
      * @dataProvider checkForceLogoutDataProvider
      */
-    public function testCheckForceLogout($userLoggedIn, $user, $forceLogout)
+    public function testCheckForceLogout($userLoggedIn, $userInterface, $forceLogout)
     {
         $this->application->expects($this->once())
             ->method('getServiceManager')
             ->will($this->returnValue($this->serviceManager));
 
-        $this->serviceManager->expects($this->any())
-            ->method('get')
-            ->with('zfcuser_auth_service')
-            ->will($this->returnValue($this->authService));
+        $this->serviceManagerPlugins['zfcuser_auth_service'] = $this->authService;
 
         $this->mvcEvent->expects($this->once())
             ->method('getApplication')
@@ -85,58 +87,49 @@ class ModuleTest extends \PHPUnit_Framework_TestCase
         if ($userLoggedIn) {
             $this->authService->expects($this->once())
                 ->method('getIdentity')
-                ->will($this->returnValue($user));
+                ->will($this->returnValue($this->user));
 
-            if ($user instanceof UserForceLogoutInterface) {
+            if ($userInterface) {
                 $this->user->expects($this->once())
                     ->method('getForceLogout')
                     ->will($this->returnValue($forceLogout));
 
-                $response = $this->getMockBuilder('Zend\Stdlib\ResponseInterface')
-                    ->disableOriginalConstructor()
-                    ->getMock();
-
-                $controller = $this->getMockBuilder('ZfcUser\Controller\UserController')
-                    ->disableOriginalConstructor()
-                    ->getMock();
-                $controller->expects($this->once())
-                    ->method('logoutAction')
-                    ->will($this->returnValue($response));
-
-                $controllerManager = $this->getMockBuilder('Zend\Mvc\Controller\ControllerManager')
-                    ->disableOriginalConstructor()
-                    ->getMock();
-                $controllerManager->expects($this->once())
-                    ->method('get')
-                    ->with('zfcuser')
-                    ->will($controller);
-
-                $hydrator = $this->getMockBuilder('Zend\Stdlib\Hydrator\HydratorInterface')
-                    ->disableOriginalConstructor()
-                    ->getMock();
-
-                $this->serviceManager->expects($this->any())
-                    ->method('get')
-                    ->with('zfcuser_user_hydrator')
-                    ->will($this->returnValue($hydrator));
-
-                $mapper = $this->getMockBuilder('Eye4web\ZfcUser\ForceLogout\Mapper')
-                    ->disableOriginalConstructor()
-                    ->getMock();
-                $mapper->expects($this->once())
-                    ->method('setForceLogout')
-                    ->with($user, false, $hydrator);
-
-                $this->serviceManager->expects($this->any())
-                    ->method('get')
-                    ->with('Eye4web\ZfcUser\ForceLogout\Mapper')
-                    ->will($this->returnValue($mapper));
-
                 if ($forceLogout) {
-                    $this->serviceManager->expects($this->any())
+                    $response = $this->getMockBuilder('Zend\Stdlib\ResponseInterface')
+                        ->disableOriginalConstructor()
+                        ->getMock();
+
+                    $controller = $this->getMockBuilder('ZfcUser\Controller\UserController')
+                        ->disableOriginalConstructor()
+                        ->getMock();
+                    $controller->expects($this->once())
+                        ->method('logoutAction')
+                        ->will($this->returnValue($response));
+
+                    $controllerManager = $this->getMockBuilder('Zend\Mvc\Controller\ControllerManager')
+                        ->disableOriginalConstructor()
+                        ->getMock();
+                    $controllerManager->expects($this->once())
                         ->method('get')
-                        ->with('ControllerManager')
-                        ->will($this->returnValue($controllerManager));
+                        ->with('zfcuser')
+                        ->will($this->returnValue($controller));
+
+                    $hydrator = $this->getMockBuilder('Zend\Stdlib\Hydrator\HydratorInterface')
+                        ->disableOriginalConstructor()
+                        ->getMock();
+
+                    $this->serviceManagerPlugins['zfcuser_user_hydrator'] = $hydrator;
+
+                    $mapper = $this->getMockBuilder('Eye4web\ZfcUser\ForceLogout\Mapper\ForceLogoutMapperInterface')
+                        ->disableOriginalConstructor()
+                        ->getMock();
+                    $mapper->expects($this->once())
+                        ->method('setForceLogout')
+                        ->with($this->user, false, $hydrator);
+
+                    $this->serviceManagerPlugins['Eye4web\ZfcUser\ForceLogout\Mapper'] = $mapper;
+                    
+                    $this->serviceManagerPlugins['ControllerManager'] = $controllerManager;
                 }
             }
         } else {
@@ -146,21 +139,23 @@ class ModuleTest extends \PHPUnit_Framework_TestCase
 
         $result = $this->module->checkForceLogout($this->mvcEvent);
 
-        if ($userLoggedIn && $user instanceof UserForceLogoutInterface && $forceLogout) {
+        if ($userLoggedIn && $userInterface && $forceLogout) {
             $this->assertInstanceOf('Zend\Stdlib\ResponseInterface', $result);
         }
     }
 
     public function checkForceLogoutDataProvider()
     {
-        $userWithNoInterface = $this->getMock('ZfcUser\Entity\UserInterface');
         return [
             /* $userLoggedIn, $user, $forceLogout */
-            [false, $this->user, false],
-            [false, $this->user, true],
-            [true, $this->user, false],
-            [true, $this->user, true],
-            [false, $userWithNoInterface, false],
+            [false, true, false],
+            [false, true, true],
+            [true, true, false],
+            [true, true, true],
+            [false, false, false],
+            [true, false, false],
+            [true, true, false],
+            [true, true, true],
         ];
     }
 
@@ -168,5 +163,12 @@ class ModuleTest extends \PHPUnit_Framework_TestCase
     {
         $result = $this->module->getServiceConfig();
         $this->assertTrue(is_array($result));
+    }
+
+    public function helperMockCallbackServiceManagerGet($key)
+    {
+        return (array_key_exists($key, $this->serviceManagerPlugins))
+            ? $this->serviceManagerPlugins[$key]
+            : null;
     }
 }
