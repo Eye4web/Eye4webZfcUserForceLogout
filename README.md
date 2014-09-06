@@ -43,4 +43,4 @@ Installation
     );
     ```
 
-4. Make your user entity implement `Eye4web\ZfcUser\Entity\UserForceLogoutInterface`
+4. Make your user entity implement `Eye4web\ZfcUser\ForceLogout\Entity\UserForceLogoutInterface`
